@@ -1,24 +1,20 @@
-# Introduction
-This directory contains material for teaching/learning CodeQL.  It supplements
-the more general introductory material and the reference material by presenting
-full solutions for specific problems.
+# イントロダクション
+本レポジトリは、CodeQL学習向け教材となります。特定の問題に対する解決策を示すことで、より一般的な問題に対して参考になることを期待します。
 
-The presentations are split by the programming language they present, currently
-c++, csharp, go, java and javascript.
+本ワークショップは、プログラミング言語ごとに分かれています。現状、C++、charp、Java、JavaScriptをサポートします。
 
-The directory structure for all recent additions is 
+ディレクトリの構造は、次のようになっています。
 
     language/project/content
 
-Some older workshops are in single files, with directory structure
+ただし、いくつかの古いワークショップが含まれており、それらについては、以下のようなディレクトリ構造となります。
 
     language/project
 
-The difficulty of these projects varies.  Further, some purely cover CodeQL
-programming using an existing database while others include use of the command
-line to create a database from code.
 
-As a rough guide:
+これらプロジェクトの難しさのレベルは、それぞれです。さらに、いくつかは、既存データベースを使ってCodeQLをカバーします。他のものについては、コマンドライン上で新たにコードからデータベースを生成するものも含まれています。
+
+簡単に、それぞれの言語別プロジェクトのディレクトリについて説明します。
 ```
 cpp
 ├── codeql-dataflow-sql-injection
@@ -42,17 +38,18 @@ go
 
 
 java
-├── Introduction\ to\ CodeQL\ -\ Java.pdf           | slide presentation 
-├── codeql-java-workshop-notes.md                   | notes for presentation
+├── Introduction\ to\ CodeQL\ -\ Java.pdf           | 説明資料 
+├── codeql-java-workshop-notes.md                   | ワークショップのノート 
 ├── apache-struts-online.txt                        |
-├── codeql-dataflow-sql-injection/                  | full example, beginner, db build, source build
-├── codeql-java-workshop-sqlinjection.md            | sql injection OWASP Security Shepherd
-├── java-unsafe-deserialization.md                  | lecture notes
-├── unsafe-deserialization-apache-struts.md         | unsafe deserialization, compact, intermediate, db build
+├── codeql-dataflow-sql-injection/                  | 必要なファイルがこのディレクトリ配下にあります。 
+|                                                   | データベース構築ツール、ソースビルド (初心者向け)
+├── codeql-java-workshop-sqlinjection.md            | sqlインジェクション OWASP Security Shepherd
+├── java-unsafe-deserialization.md                  | レクチャノート
+├── unsafe-deserialization-apache-struts.md         | 危険なデシリアライゼーション, 圧縮, データベースビルド
 └── workshop-java-mismatched-loop-condition.md      |
 
 javascript
-├── codeql-js-goof-workshop  | Full example illustrating all the steps, beginner, db build, source build
+├── codeql-js-goof-workshop  | 必要な全ての例がこのディレクトリにあります。手順、データベースビルド、ソースビルド(初心者向け)
 ├── codeql-workshop-javascript-unsafe-jquery-calls.md | pure codeql, beginner 
 
 python

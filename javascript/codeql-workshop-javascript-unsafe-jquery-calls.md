@@ -1,43 +1,42 @@
-# CodeQL workshop for JavaScript: Finding unsafe calls to the jQuery `$` function
+# CodeQL workshop for JavaScript: jQuery `$` 関数への危険な呼び出しを見つける
 
-- Analyzed language: JavaScript
-- Difficulty level: 1/3
+- 分析対象言語 : JavaScript
+- 難しさレベル : 1/3
 
-## Problem statement
+## 問題の説明 
 
-jQuery is an extremely popular, but old, open source JavaScript library designed to simplify things like HTML document traversal and manipulation, event handling, animation, and Ajax. The jQuery library supports modular plugins to extend its capabilities. Bootstrap is another popular JavaScript library, which has used jQuery's plugin mechanism extensively. However, the jQuery plugins inside Bootstrap used to be implemented in an unsafe way that could make the users of Bootstrap vulnerable to cross-site scripting (XSS) attacks. This is when an attacker uses a web application to send malicious code, generally in the form of a browser side script, to a different end user.
+jQueryは、非常に人気のあるフロントエンドのライブラリですが、古い、オープンソースライブラリで、HTMLドキュメントの計算や、操作、イベントハンドリング、アニメーション、Ajaxのような簡単なことするために設計されてたものです。jQueryは、機能拡張するためのプラグインをサポートします。Bootstrapもまた、JavaScriptにおいて人気のあるライブラリで、jQueryのプラグイン機能を利用しています。しかし、Bootstrap内部の、jQueryプラグインは、クロスサイトスクリプティング(XSS)攻撃の脆弱性のあるコードで実装されています。XSSとは、攻撃者が、Webアプリケーションに悪意あるコード(多くの場合、ブラウザのスクリプト)を別のユーザに送りつけることです。
 
-Four such vulnerabilities in Bootstrap jQuery plugins were fixed in [this pull request](https://github.com/twbs/bootstrap/pull/27047), and each was assigned a CVE.
+Bootstrap jQuery プラグインの関連する４つの脆弱性は、[this pull request](https://github.com/twbs/bootstrap/pull/27047)で修正済みで、 それぞれの脆弱性は、CVEに登録されました。
 
-The core mistake in these plugins was the use of the omnipotent jQuery `$` function to process the options that were passed to the plugin. For example, consider the following snippet from a simple jQuery plugin:
+これらプラグインの間違いの根幹は、プラグインに渡されるオプションを処理するjQeury `$`関数の利用でした。例えば、単純な以下のjQueryプラグイン:
 
 ```javascript
 let text = $(options.textSrcSelector).text();
 ```
 
-This plugin decides which HTML element to read text from by evaluating `options.textSrcSelector` as a CSS-selector, or that is the intention at least. The problem in this example is that `$(options.textSrcSelector)` will execute JavaScript code instead if the value of `options.textSrcSelector` is a string like `"<img src=x onerror=alert(1)>".` 
+このプラグインは、CSSセレクタとして、`options.textSrcSelector`を評価して、どのHTML要素からテキストを読み込むかを決定すル、もしくは意図的に指定します。この例の中での問題は、`$(options.textSrcSelector)`が`options.textSrcSelector`に入る値が、`"<img src=x onerror=alert(1)>".`のような文字列の場合、Javascriptとしてコードを実行してしまうことです。
 
-In security terminology, jQuery plugin options are a **source** of user input, and the argument of `$` is an XSS **sink**.
-
-The pull request linked above shows one approach to making such plugins safer: use a more specialized, safer function like `$(document).find` instead of `$`.
+セキュリティ用語において、jQueryプラグインオプションがユーザ入力の**source**となり、`$`の引数がXSSが実行される**sink**となります。
+上記リンクのpull requestはより安全にするための１つのアプローチを示します。:より特別化した、安全な関数`$`の代わりに`$(document).find`を使います。
 ```javascript
 let text = $(document).find(options.textSrcSelector).text();
 ```
 
-In this challenge, we will use CodeQL to analyze the source code of Bootstrap, taken from before these vulnerabilities were patched, and identify the vulnerabilities.
+このセッションでは、Bootstrapのソースコードを解析するCodeQLを使います。ただし、利用するコードは、これら脆弱性問題を解決する前のものを使い、脆弱性を見つけるものです。
 
-## Setup instructions
+## セットアップ手順 
 
-### Writing queries on your local machine (recommended)
+### ローカルPC上でクエリを記述します(recommended)
 
-To run CodeQL queries on Bootstrap offline, follow these steps:
+CodeQLクエリをBootstrapにおいて実行するために、次の手順に従い進めます。:
 
-1. Install the Visual Studio Code IDE.
-1. Download and install the [CodeQL extension for Visual Studio Code](https://codeql.github.com/docs/codeql-for-visual-studio-code/). Full setup instructions are [here](https://codeql.github.com/docs/codeql-for-visual-studio-code/setting-up-codeql-in-visual-studio-code/).
-1. [Set up the starter workspace](https://codeql.github.com/docs/codeql-for-visual-studio-code/setting-up-codeql-in-visual-studio-code/#starter-workspace).
-    - **Important**: Don't forget to `git clone --recursive` or `git submodule update --init --remote`, so that you obtain the standard query libraries.
-1. Open the starter workspace: File > Open Workspace > Browse to `vscode-codeql-starter/vscode-codeql-starter.code-workspace`.
-1. Create an account on LGTM.com if you haven't already. You can log in via OAuth using your Google or GitHub account.
+1. Visual Studio Code IDEのインストール
+2. [CodeQL extension for Visual Studio Code](https://codeql.github.com/docs/codeql-for-visual-studio-code/)のダウンロード＆インストール。 完全なセットアップ手順は、[here](https://codeql.github.com/docs/codeql-for-visual-studio-code/setting-up-codeql-in-visual-studio-code/)を参照下さい。
+3. [Set up the starter workspace](https://codeql.github.com/docs/codeql-for-visual-studio-code/setting-up-codeql-in-visual-studio-code/#starter-workspace)をセットアップします。
+    - **Important**: 標準のクエリライブラリもクローンするために、ローカルにクローンする際は、`git clone --recursive` もしくは `git submodule update --init --remote`を指定することを忘れないように。 
+4. VSCodeを実行して、次のようにワークスペースをオープンします。: File > Open Workspace > `vscode-codeql-starter/vscode-codeql-starter.code-workspace`をブラウズします。
+5. Create an account on LGTM.com if you haven't already. You can log in via OAuth using your Google or GitHub account.
 1. Visit the [database downloads page for the vulnerable version of Bootstrap on LGTM.com](https://lgtm.com/projects/g/esbena/bootstrap-pre-27047/ci/#ql).
 1. Download the latest database for JavaScript.
 1. Unzip the database.
