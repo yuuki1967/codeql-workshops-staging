@@ -36,18 +36,32 @@ CodeQLクエリをBootstrapにおいて実行するために、次の手順に�
 3. [Set up the starter workspace](https://codeql.github.com/docs/codeql-for-visual-studio-code/setting-up-codeql-in-visual-studio-code/#starter-workspace)をセットアップします。
     - **Important**: 標準のクエリライブラリもクローンするために、ローカルにクローンする際は、`git clone --recursive` もしくは `git submodule update --init --remote`を指定することを忘れないように。 
 4. VSCodeを実行して、次のようにワークスペースをオープンします。: File > Open Workspace > `vscode-codeql-starter/vscode-codeql-starter.code-workspace`をブラウズします。
-5. データベースを解凍します。
-6. データベースをCodeQLデータベースとしてマウントします。
-    - Click the **CodeQL** icon in the left sidebar.
-    - Place your mouse over **Databases**, and click the + sign that appears on the right.
-    - Choose the unzipped database directory on your filesystem.
-7. `UnsafeDollarCall.ql`ファイルを `codeql-js-goof-workshop`ディレクトリに作成します。
 
 ## 参考資料
 以下のリンク先も参考になります。
 - [Learning CodeQL](https://codeql.github.com/docs/codeql-overview/)
 - [Learning CodeQL for JavaScript](https://codeql.github.com/docs/codeql-language-guides/codeql-for-javascript/)
 - [Using the CodeQL extension for VS Code](https://codeql.github.com/docs/codeql-for-visual-studio-code/)
+
+## 対象レポジトリからデータベースの作成
+セキュリティ脆弱性を持つBootstrapのバージョンからCodeQLのデータベースを作成します。
+1. ローカルPCにクローン
+   ```
+   git clone https://github.com/twbs/bootstrap.git
+   ```
+2. 本ワークショップで想定の脆弱性のあるバージョンに切り替え
+   ```
+   git checkout tags/v3.4.0 -b v3.4.0
+   ```
+3. データベースの作成
+   ```
+   cd bootstrap
+   codeql database create <database folder> -l javascript
+   ```
+4. データベースをCodeQLデータベースとしてマウントします。
+    - Click the **CodeQL** icon in the left sidebar.
+    - Place your mouse over **Databases**, and click the + sign that appears on the right.
+    - Choose the unzipped database directory on your filesystem.
 
 ## クエリの作成
 
