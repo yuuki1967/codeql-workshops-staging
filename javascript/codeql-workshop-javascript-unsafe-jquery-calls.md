@@ -36,45 +36,34 @@ CodeQLクエリをBootstrapにおいて実行するために、次の手順に�
 3. [Set up the starter workspace](https://codeql.github.com/docs/codeql-for-visual-studio-code/setting-up-codeql-in-visual-studio-code/#starter-workspace)をセットアップします。
     - **Important**: 標準のクエリライブラリもクローンするために、ローカルにクローンする際は、`git clone --recursive` もしくは `git submodule update --init --remote`を指定することを忘れないように。 
 4. VSCodeを実行して、次のようにワークスペースをオープンします。: File > Open Workspace > `vscode-codeql-starter/vscode-codeql-starter.code-workspace`をブラウズします。
-5. Create an account on LGTM.com if you haven't already. You can log in via OAuth using your Google or GitHub account.
-1. Visit the [database downloads page for the vulnerable version of Bootstrap on LGTM.com](https://lgtm.com/projects/g/esbena/bootstrap-pre-27047/ci/#ql).
-1. Download the latest database for JavaScript.
-1. Unzip the database.
-1. Import the unzipped database into Visual Studio Code:
+5. データベースを解凍します。
+6. データベースをCodeQLデータベースとしてマウントします。
     - Click the **CodeQL** icon in the left sidebar.
     - Place your mouse over **Databases**, and click the + sign that appears on the right.
     - Choose the unzipped database directory on your filesystem.
-1. Create a new file, name it `UnsafeDollarCall.ql`, save it under `codeql-custom-queries-javascript`.
+7. `UnsafeDollarCall.ql`ファイルを `codeql-js-goof-workshop`ディレクトリに作成します。
 
-### Writing queries in the browser
-
-To run CodeQL queries on Bootstrap online, follow these steps:
-
-1. Create an account on LGTM.com if you haven't already. You can log in via OAuth using your Google or GitHub account.
-1. [Start querying the Bootstrap project](https://lgtm.com/query/project:1510734246425/lang:javascript/).
-    - Alternative: Visit the [vulnerable Bootstrap project page](https://lgtm.com/projects/g/esbena/bootstrap-pre-27047) and click **Query this project**.
-
-
-## Documentation links
-If you get stuck, try searching our documentation and blog posts for help and ideas. Below are a few links to help you get started:
+## 参考資料
+以下のリンク先も参考になります。
 - [Learning CodeQL](https://codeql.github.com/docs/codeql-overview/)
 - [Learning CodeQL for JavaScript](https://codeql.github.com/docs/codeql-language-guides/codeql-for-javascript/)
 - [Using the CodeQL extension for VS Code](https://codeql.github.com/docs/codeql-for-visual-studio-code/)
 
-## Challenge
-The challenge is split into several steps. You can write one query per step, or work with a single query that you refine at each step.
+## クエリの作成
 
-Each step has a **Hint** that describe useful classes and predicates in the CodeQL standard libraries for JavaScript and keywords in CodeQL. You can explore these in your IDE using the autocomplete suggestions and jump-to-definition command.
+XSSの脆弱性を見つけるクエリを作成するために、いくつかのステップに分離します。ステップごとにクエリを作成して、動作を確認します。
 
-Each step has a **Solution** that indicates one possible answer. Note that all queries will need to begin with `import javascript`, but for simplicity this may be omitted below.
+それぞれのステップには、役にたつclass、predicateの**Hint**として記載します。これらは CodeQLのJavaScript用標準ライブラリとなります。VSCodeでは、自動補完機能、もしくは、jump-to-definition(CMD+right click on mouse)でライブラリ情報を取得できます。
 
-### Finding calls to the jQuery `$` function
+それから、それぞれのステップで、具体的実装例を紹介しています。**Solution**を展開すると参照できます。クエリは一部です。書き始める際は、`import javascript`から始める必要があります。
 
-1. Find all function call expressions.
+### jQuery `$` 関数を検出する
+
+1. 全ての関数コールの記述を見つける
     <details>
     <summary>Hint</summary>
 
-    A function call is called a `CallExpr` in the CodeQL JavaScript library.
+    関数コールを見つけるためには、CodeQL JavaScript ライブラリの`CallExpr`を使います。
     </details>
      <details>
     <summary>Solution</summary>
@@ -85,7 +74,7 @@ Each step has a **Solution** that indicates one possible answer. Note that all q
     ```
     </details>
 
-1. Identify the expression that is used as the first argument for each call.
+2. それぞれの関数コールの第１引数を見つける
     <details>
     <summary>Hint</summary>
 
@@ -101,7 +90,7 @@ Each step has a **Solution** that indicates one possible answer. Note that all q
     ```
     </details>
 
-1. Filter your results to only those calls to a function named `$`.
+1. それら関数コールの中から`$`関数のみを検出する
     <details>
     <summary>Hint</summary>
 
@@ -118,14 +107,14 @@ Each step has a **Solution** that indicates one possible answer. Note that all q
     ```
     </details>
 
-### Finding accesses to jQuery plugin options
-Consider creating a new query for these next few steps, or commenting out your earlier solutions and using the same file. We will use the earlier solutions again in the next section.
+### jQuery plugin options(プラグインオプション)へのアクセスを見つける
+次のセクションになります。新しくクエリファイルを作成するか、前回のクエリファイルを利用します。前回と同じクエリファイルを利用する際は、前回実装したsolution(ソリューション)は、コメントアウト(//, /* */)してください。
 
-1. When a jQuery plugin option is accessed, the code generally looks like `something.options.optionName`. First, identify all accesses to a property named `options`.
+1. jQuery plugin optionへのアクセスがあった場合、 `something.options.optionName`を使って、それを判定します。 まず、property name(属性名)`options`を探します
     <details>
     <summary>Hint</summary>
 
-    Property accesses are called `PropAccess` in the CodeQL JavaScript libraries. Use `PropAccess.getPropertyName()` to identify the property.
+    属性へのアクセスは、 CodeQL JavaScript ライブラリの`PropAccess`が対応します。属性を見つけるためには、`PropAccess.getPropertyName()`を使います。
     </details>
     <details>
     <summary>Solution</summary>
@@ -137,11 +126,11 @@ Consider creating a new query for these next few steps, or commenting out your e
     ```
     </details>
 
-1. Take your query from the previous step, and modify it to find chained property accesses of the form `something.options.optionName`.
+1. 次に先で実装したステップに対して、`something.options.optionName`の属性へのアクセスのベースを見つけるよう改良します
     <details>
     <summary>Hint</summary>
 
-    There are two property accesses here, with the second being made upon the result of the first. `PropAccess.getBase()` gives the object whose property is being accessed.
+    ここに２つの属性アクセスがあります。２つ目は、１つ目の結果から属性アクセスを探すように記述します。`PropAccess.getBase()`は、どの属性がアクセスされるのかといったオブジェクトを見つけることができます。
     </details>
     <details>
     <summary>Solution</summary>
@@ -155,12 +144,12 @@ Consider creating a new query for these next few steps, or commenting out your e
     ```
     </details>
 
-### Putting it all together
+### これまでのステップを１つに統合します
 
-1. Combine your queries from the two previous sections. Find chained property accesses of the form `something.options.optionName` that are used as the argument of calls to the jQuery `$` function.
+1. これまでセクションで実装したクエリを１つに統合します。jQuery `$`関数の引数として利用される`something.options.optionName`フォームの連結している属性アクセスを見つけます。
     <details>
     <summary>Hint</summary>
-    Declare all the variables you need in the `from` section, and use the `and` keyword to combine all your logical conditions.
+    `from`セクションの中に必要とする全ての変数を定義します。そして、全ての論理状態を統合するために`and`論理演算子を使います。
     </details>
     <details>
     <summary>Solution</summary>
@@ -177,18 +166,19 @@ Consider creating a new query for these next few steps, or commenting out your e
     ```
     </details>
 
-1. (Bonus) The solution to step 2 should result in a query with three alerts on the unpatched Bootstrap codebase, two of which are true positives that were fixed in the linked pull request. There are however additional vulnerabilities that are beyond the capabilities of a purely syntactic query such as the one we have written. For example, the access to the jQuery option (`something.options.optionName`) is not always used directly as the argument of the call to `$`: it might be assigned first to a local variable, which is then passed to `$`.
+1. (おまけ) このステップ２へのソリューションは、結果として、まだパッチの当たっていないBootstrapに存在する３つの問題を検出するクエリです。それらのうちの２つは、この問題を対策したpull requestで修正された、適切な検出です。追加の問題については、このクエリでは、発見できません。例えば、jQuery option (`something.options.optionName`)は、`$`への引数として、常に使用するわけではなく、一旦ローカル変数に渡されるかもしれません。
 
-    The use of intermediate variables and nested expressions are typical source code examples that require use of **data flow analysis** to detect.
-
-    To find one more variant of this vulnerability, try adjusting the query to use the JavaScript data flow library a tiny bit, instead of relying purely on the syntactic structure of the vulnerability. See the hint for more details.
+    中間変数を利用や、ネストされた式（記述）は、検出された**データフロー分析**を必要とする典型的なソースコードの例です。 
+    
+    この脆弱性の異形を見つけるためには、少々JavaScript データフローライブラリを使う際にクエリを調整してみます。
 
     <details>
     <summary>Hint</summary>
 
-    - If we have an AST node, such as an `Expr`, then [`flow()`](https://codeql.github.com/codeql-standard-libraries/javascript/semmle/javascript/AST.qll/predicate.AST$AST$ValueNode$flow.0.html) will convert it into a __data flow node__, which we can use to reason about the flow of information to/from this expression.
-    - If we have a data flow node, then [`getALocalSource()`](https://codeql.github.com/codeql-standard-libraries/javascript/semmle/javascript/dataflow/DataFlow.qll/predicate.DataFlow$DataFlow$Node$getALocalSource.0.html) will give us another data flow node in the same function whose value ends up in this node.
-    - If we have a data flow node, then `asExpr()` will turn it back into an AST expression, if possible.
+    -  もし、`Expr`のようなASTノードがある場合、[`flow()`](https://codeql.github.com/codeql-standard-libraries/javascript/semmle/javascript/AST.qll/predicate.AST$AST$ValueNode$flow.0.html)は、この表現（記述）へ/からフロー情報を推論する__data flow node__に変換します。
+
+    - データフローノードがある場合、[`getALocalSource()`](https://codeql.github.com/codeql-standard-libraries/javascript/semmle/javascript/dataflow/DataFlow.qll/predicate.DataFlow$DataFlow$Node$getALocalSource.0.html)が同一関数の中で、最終的にこのノードで完了する別のデータフローを検出します。 
+    - もし、データフローノードがある場合、`asExpr()`は、AST記述中にそのデータフローノードを戻します。 
     </details>
     <details>
     <summary>Solution</summary>
@@ -205,6 +195,6 @@ Consider creating a new query for these next few steps, or commenting out your e
     ```
     </details>
 
-## Acknowledgements
+## acknowledgement
 
 This is a reduced version of a Capture-the-Flag challenge devised by @esbena, available at https://securitylab.github.com/ctf/jquery. Try out the full version!
