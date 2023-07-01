@@ -1,7 +1,7 @@
 <!-- -*- coding: utf-8 -*- -->
 <!-- https://gist.github.com/hohn/
  -->
-# CodeQL Tutorial for C/C++: Data Flow and SQL Injection
+# CodeQL Tutorial for Python: データフローとSQL インジェクション  
 
 <!--
  !-- xx:
@@ -39,42 +39,30 @@
 
 To set up VS Code for CodeQL query development, follow these steps:
 
-1. Install the Visual Studio Code IDE.
-
-2. Download and install the [CodeQL extension for Visual Studio Code](https://help.semmle.com/codeql/codeql-for-vscode.html). Full setup instructions are [here](https://help.semmle.com/codeql/codeql-for-vscode/procedures/setting-up.html).
-
-3. [Set up the starter workspace](https://help.semmle.com/codeql/codeql-for-vscode/procedures/setting-up.html#using-the-starter-workspace).
-    - **Important**: Don't forget to `git clone --recursive` or `git submodule update --init --remote`, so that you obtain the standard query libraries.
-4. Open the starter workspace: File > Open Workspace > Browse to `vscode-codeql-starter/vscode-codeql-starter.code-workspace`.
-
-5. Download the sample database [`python-sqli-b0e435c.zip`](https://drive.google.com/file/d/1eoY-8nwdiIEZHLYIGnhIkbaVHQaQuGB0/view?usp=sharing)
-
-6. Unzip the database.
-
-7. Import the unzipped database into Visual Studio Code:
+1. Visual Studio Code IDEのインストール
+2. [CodeQL extension for Visual Studio Code](https://codeql.github.com/docs/codeql-for-visual-studio-code/)のダウンロード＆インストール。 完全なセットアップ手順は、[here](https://codeql.github.com/docs/codeql-for-visual-studio-code/setting-up-codeql-in-visual-studio-code/)を参照下さい。
+3. [Set up the starter workspace](https://codeql.github.com/docs/codeql-for-visual-studio-code/setting-up-codeql-in-visual-studio-code/#starter-workspace)をセットアップします。
+    - **Important**: 標準のクエリライブラリもクローンするために、ローカルにクローンする際は、`git clone --recursive` もしくは `git submodule update --init --remote`を指定することを忘れないように。 
+4. VSCodeを実行して、次のようにワークスペースをオープンします。: File > Open Workspace > `vscode-codeql-starter/vscode-codeql-starter.code-workspace`をブラウズします。
+5. 今回対象のデータベース[`python-sqli-b0e435c.zip`](https://drive.google.com/file/d/1eoY-8nwdiIEZHLYIGnhIkbaVHQaQuGB0/view?usp=sharing)をダウンロード
+6. Visual Studio Codeにデータベースを入れます:
     - Click the **CodeQL** icon in the left sidebar.
-    - Place your mouse over **Databases**, and click the + sign that appears on
-      the right. 
+    - Place your mouse over **Databases**, and click the + sign that appears on the right.
     - Choose the unzipped database directory on your filesystem.
+7. 新しくファイル`SqliInjection.ql`を作成し、`codeql-dataflow-sql-injection`ディレクトリの下に保存します。
 
-8. Create a new file, name it `SqliInjection.ql`, save it under `codeql-custom-queries-python`.
 
-
-## Documentation Links
+## 参照資料 
 If you get stuck, try searching our documentation and blog posts for help and ideas. Below are a few links to help you get started:
 - [Learning CodeQL](https://codeql.github.com/docs/)
 - [Learning CodeQL for Python](https://codeql.github.com/docs/codeql-language-guides/codeql-for-python/)
 - [Using the CodeQL extension for VS Code](https://codeql.github.com/docs/codeql-for-visual-studio-code/)
 
-## Codeql Recap
-This is a brief review of CodeQL to accompany the tutorial session.  We will cover
-all of this in more detail during the tutorial.  For more details beyond that, see
-the [documentation links](#documentation-links).
+## Codeql 概要
+CodeQLのPyhton向けクエリの学習セッションです。このセッションを通じて、より詳しくクエリを知ることができます。さらなる詳細は、 [documentation links](#documentation-links)を参照ください。
 
 ### from, where, select
-CodeQL is a declarative language and a basic query is defined by a
-`select` clause, which specifies what the result of the query should be. For
-example:
+CodeQLは叙述型の言語で、基本的なクエリは、クエリの結果を指定する`select`句を定義します。例えば、:
 
 ```ql
 import python
@@ -82,33 +70,23 @@ import python
 select "hello world"
 ```
 
-More complicated queries look like this:
+より、複雑なクエリは、次のような例です：
 ```ql
 from /* ... variable declarations ... */
 where /* ... logical formulas ... */
 select /* ... expressions ... */
 ```
+クエリの中で使用する変数を指定は、`from`句で指定します。ロジック式の中でこれら変数に対して条件を指定する際に`where`句を使用します。`select`句が、結果を指定します。その際に、`from`句で定義した変数を参照することができます。
 
-The `from` clause specifies some variables that will be used in the query. The
-`where` clause specifies some conditions on those variables in the form of logical
-formulas. The `select` clauses specifies what the results should be, and can refer
-to variables defined in the `from` clause.
-
-The `from` clause is defined as a series of variable declarations, where each
-declaration has a _type_ and a _name_. For example:
-
+`from`句は、変数の宣言を繋げていきます。それぞれの宣言は、_type_ と_name_の順で指定します。
+例を次に示します。：
 ```ql
 from If ifStmt
 select ifStmt
 ```
+この例では、型(type)として`If`で、`ifStmt`という名前の変数を宣言しています。変数は、型と値で表現します。ここに、変数`ifStmt`がPythonプログラムの中のすべての`if`文が入っています。これを実行すれば、参照することができます。
 
-We are declaring a variable with the name `ifStmt` and the type `If` (from the
-CodeQL standard library for analyzing Python).  Variables represent a **set of
-values**, initially constrained by the type of the variable.  Here, the variable
-`ifStmt` represents the set of all `if` statements in the Python program, as we can
-see if we run the query.
-
-A query using all three clauses to find empty true branches:
+空のブランチを見つけるクエリは次のようになります。上述した３つの句をすべて利用しています。:
 ```ql
 import python
 
@@ -121,13 +99,9 @@ select ifstmt
 
 
 ### Predicates
-The other feature we will use are _predicates_. These provide a way to encapsulate
-portions of logic in the program so that they can be reused.  You can think of
-them as a mini `from`-`where`-`select` query clause. Like a select clause they
-also produce a set of "tuples" or rows in a result table.
+その他の特徴として、_predicates_があります。再利用するためにプログラムの中にロジックの一部を隠蔽する(抽象化する)ための方法を提供します。一番シンプルな`from`-`where`-`select`で、`select`に結果テーブルの中の行もしくは、タプル（複数の要素構成）も出力することができます。
 
-We can introduce a new predicate in our query that identifies the set of empty
-blocks in the program (for example, to reuse this feature in another query):
+空のブロックを抽出するクエリの中に新しいpredicateを紹介します。
 
 ```ql
 import python
@@ -143,20 +117,16 @@ where
 select ifstmt
 ```
 
-### Existential quantifiers (local variables in queries)
-Although the terminology may sound scary if you are not familiar with logic and
-logic programming, *existential quantifiers* are simply ways to introduce
-temporary variables with some associated conditions.  The syntax for them is:
+### Existential quantifiers (クエリの中のローカル変数)
+この言葉はロジック、ロジックプログラム独特なものです。*existential qualifiers*をわかりやすく説明すると、関連した状態を持った一時的な変数のことです。文法は：
 
 ```ql
 exists(<variable declarations> | <formula>)
 ```
 
-They have a similar structure to the `from` and `where` clauses, where the first
-part allows you to declare one or more variables, and the second formula
-("conditions") that can be applied to those variables.
+existsは`from`と`where`句と似た構造を持ちます。最初は、１つ以上のせんげん、２つ目は、それらの変数を適用した式("conditions")を指定します。
 
-For example, we can use this to refactor the query 
+これを使ってこのクエリをリファクタすることができます。
 ```ql
 import python
 
@@ -181,12 +151,10 @@ where
 select ifstmt
 ```
 
-This is frequently used to convert a query into a predicate; by introducing local
-variables, the predicate's interface can be kept more minimal.
+このような例は、１つのクエリからpredicateへ変更する際のよく使われるテクニックです。ローカル変数を使うことで、predicateのインターフェースをよりコンパクトにすることができます。
 
 ### Classes
-Classes are a way in which you can define new types within CodeQL, as well as
-providing an easy way to reuse and structure code.
+classsはCodeQLの中で新しい型を定義できます。こちらも、再利用、構造化コードをする際の簡単な手法を提供するものです。
 
 Like all types in CodeQL, classes represent a set of values. For example, the
 `StmtList` type is, in fact, a class, and it represents the set of all statement
@@ -213,7 +181,7 @@ where
 select ifstmt
 ```
 
-## The Problem in Action
+## 問題の再現
 Running the code is a great way to see the problem and check whether the code is
 vulnerable.
 

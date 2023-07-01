@@ -1,13 +1,13 @@
 # CodeQL workshop for C/C++: Bad overflow checks
 
-- Analyzed language: C/C++
-- Difficulty level: 1/3
+- 分析対象言語 : C/C++
+- 難しさレベル : 1/3
 
-## Problem statement
+## セキュリティ脆弱性説明 
 
-In this workshop, we will use CodeQL to analyze the source code of [ChakraCore](https://github.com/microsoft/ChakraCore), an open-source JavaScript engine created by Microsoft.
+このワークショップでは、[ChakraCore](https://github.com/microsoft/ChakraCore)のソースコードをCodeQLで分析します。対象リポジトリは、Microsoft社が開発したOSSのJavaScriptエンジンです。
 
-In C/C++ arithmetic operations can _overflow_ if the result of the operation is a number which is too large to be stored in the type. When an operation overflows, the value typically "wraps" around from the high end of the range to the low end. Developers sometimes exploit this property to write overflow checks like this:
+C/C++の算術オペレータ _overflow_の中で、そのオペレーションの結果定義した変数の型の範囲を超える大きな値を格納した場合を考えます。オペレーションがオーバフローした場合、大きい値から小さい値へラップします。デベロッパーは、オーバフロー検証するためのロジックを入れるために、この属性を利用します。
 
 ```c
 if (v + b < v)
@@ -17,15 +17,15 @@ if (v + b < v)
 }
 ```
 
-The intention is that if `v + b` overflows, it will wrap around to the start of the range of the type, but that it cannot wrap around beyond the value of `v`.
+`v + b`の結果がオーバフローしているかを確認するロジックです。`v`の値は、ラップはしていないですが、この計算結果はラップします。
 
-Where might this go wrong?
+この問題の間違いを探します。
 
 <details>
 <summary>Answer</summary>
-CPUs will generally prefer to perform arithmetic operations on 32-bit or larger integers, as architectures are optimized to perform these efficiently. The compiler therefore performs "integer promotion" for arguments to arithmetic operations that are smaller than 32-bits.
+CPUは通常、CPUのアーキテクチャは、最適化して、32bit以上の整数の算術演算を行います。コンパイラは、32bitよりも小さい算術演算に対して、"整数の拡張"を実行します。
 
-Unfortunately, this means that any arithmetic operations that occur on types smaller than 32 bits will not overflow as expected, because they have been calculated using a larger type.
+これは、32bitよりも小さい型上で計算される場合は、期待したとおり、オーバーフローは起きません。大きい型を使って計算した場合にオーバーフローが起きます。
 
 The arguments of the following arithmetic operators undergo implicit conversions:
 
@@ -37,7 +37,7 @@ The arguments of the following arithmetic operators undergo implicit conversions
 See <a href="https://en.cppreference.com/w/c/language/conversion">https://en.cppreference.com/w/c/language/conversion</a> for more details.
 </details>
 
-Consider this example:
+次のコードを例にします。:
 
 ```c
 uint16_t v = 65535;
@@ -49,11 +49,10 @@ if (v + b < v) {
     result = v + b;
 }
 ```
-
-What is the value of result?
+結果を見ます。
 <details>
 <summary>Answer</summary>
-Here's the example again, with the conversions made explicit:
+再度、コード例を示します。暗黙的に型変換が行われます。:
 
 ```c
 uint16_t v = 65535;
@@ -66,16 +65,16 @@ if ((int)v + (int)b < (int)v) {
 }
 ```
 
-In this example the second branch is executed, even though there is a 16-bit overflow, and result is set to zero.
+この例では、16bitのオーバーフローが起きたとしても、二番目の分岐を実行します。結果は０になります。
 
-Explanation:
+説明:
 
-- The two integer arguments to the addition, `v` and `b`, are promoted to 32-bit integers.
-- The comparison (`<`) is also an arithmetic operation, therefore it will also be completed on 32-bit integers.
-- This means that `v + b < v` will never be true, because v and b can hold at most 2<sup>16</sup>.
-- Therefore, the second branch is executed, but the result of the addition is stored into the result variable. Overflow will still occur as result is a 16-bit integer.
+-  2つの整数値`v`と`b`は、32bit整数拡張されます
+- 比較演算子(`<`)もまた、算術演算です。そのため、32bitで演算します。 
+-  `v + b < v`は、真にはなりません。`v`、`b`ともに最大2<sup>16</sup>であるため、32bitを超えることはないからです。
+- そのため、常に二番目の分岐が実行され、足し算の結果が変数に代入されます。結果は、16bitで格納されるため、オーバフローはまだ解決できません。
 
-In simple terms, if you have an operation `v + b < v`, and `v` and `b` both have a type smaller than 32-bits, then the overflow check will never succeed.
+端的に言うと、32bitよりも小さい型同士の足し算結果のオーバーフロー検証は無意味となります。
 </details>
 
 We will begin by using CodeQL to identify relational comparison operations (`<`, `>`, `<=`, `>=`) that look like overflow checks. We will then refine this to identify only those checks which are likely wrong due to integer promotion.
@@ -88,16 +87,13 @@ If you follow the workshop all the way to the end, then you will find a real sec
 
 To run CodeQL queries on ChakraCore offline, follow these steps:
 
-1. Install the Visual Studio Code IDE.
-1. Download and install the [CodeQL extension for Visual Studio Code](https://codeql.github.com/docs/codeql-for-visual-studio-code/setting-up-codeql-in-visual-studio-code/#installing-the-extension). Full setup instructions are [here](https://codeql.github.com/docs/codeql-for-visual-studio-code/setting-up-codeql-in-visual-studio-code/).
-1. Create a new directory and open it in Visual Studio Code.
 1. Download the [ChakraCore database](https://drive.google.com/file/d/1Jhxylk0b6My3P61-nt3_DkHreAXQltWz/view?usp=sharing).
 1. Import the database into Visual Studio Code:
     - Click the **CodeQL** icon in the left sidebar.
     - Place your mouse over **Databases**, and click the archive sign that appears on the right.
     - Choose the database directory on your filesystem.
 1. Create a new directory `bad-overflow-queries` in the Visual Studio Code Explorer view.
-1. Add the file `qlpack.yml` with the following content to the directory `bad-overflow-queries`.
+1. Add the file `qlpack.yml` with the following content to the directory `bad-overflow-queries`.or execute `codeql pack init cpp/bad-overflow-queries -d` under the directory `cpp` .
 
    ```yaml
    name: bad-overflow-queries

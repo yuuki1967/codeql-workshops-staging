@@ -1,13 +1,13 @@
 # CodeQL workshop for C/C++: Empty if statements
 
-- Analyzed language: C/C++
-- Difficulty level: 1/3
+- 分析対象言語 : C/C++
+- 難しさレベル level: 1/3
 
-## Problem statement
+## セキュリティ脆弱性問題説明 
 
-In this workshop, we will be writing our first CodeQL query, which we will use to analyze the source code of [Exiv2](https://www.exiv2.org/), an open source C++ library to manage image metadata.
+このワークショップでは、画像メタデータ管理用OSS C++ライブラリの１つ、[Exiv2](https://www.exiv2.org/)のソースコードを解析するためのクエリを作成します。
 
-Redundant code is often an indication that the programmer has made a logical mistake. Consider this simple example:
+冗長なコードは、プログラマーがロジックを間違う原因になります。ここに簡単なコード例を示します。:
 
 ```c
 int write(int buf[], int size, int loc, int val) {
@@ -20,14 +20,14 @@ int write(int buf[], int size, int loc, int val) {
     return 0;
 }
 ```
-Here we have a C function which writes a value to a buffer. It includes a check that is intended to prevent the write overflowing the buffer, but the return statement within the condition has been commented out, leaving a redundant if statement and no bounds checking.
+バッファに値を挿入するCの関数です。オーバーフローを防止するチェックコードを含んでいます。しかし、状態を返すコードはコメントアウトされています。この場合、このコードは無意味で、境界のチェックがありません。
 
-In this workshop we will explore the features of CodeQL by writing a query to identify redundant conditionals like this. We will use the example above as a _seed vulnerability_ for writing that query to help us find other instances ("variants") of the same class of vulnerability.
+このワークショップでは、このような意味のない、冗長なコードを検出するクエリを見つけることが可能です。このクエリを進めるにあたっては、_seed vulnerability_が良い例になります。それは、他のインスタンス("variants")を見つけるクエリです。
 
-This workshops will teach you:
- - Basic query structure
- - QL types and variables
- - Logical conditions
+このワークショップを実施すると次のことがわかります。:
+ - クエリの基本構造
+ - QL の型と変数
+ - 論理状態
 
 ## Setup instructions
 
@@ -35,18 +35,17 @@ This workshops will teach you:
 
 To run CodeQL queries on Exiv2, follow these steps:
 
-1. Install the Visual Studio Code IDE.
-1. Download and install the [CodeQL extension for Visual Studio Code](https://help.semmle.com/codeql/codeql-for-vscode.html). Full setup instructions are [here](https://help.semmle.com/codeql/codeql-for-vscode/procedures/setting-up.html).
-1. [Set up the starter workspace](https://help.semmle.com/codeql/codeql-for-vscode/procedures/setting-up.html#using-the-starter-workspace).
-    - **Important**: Don't forget to `git clone --recursive` or `git submodule update --init --remote`, so that you obtain the standard query libraries.
-1. Open the starter workspace: File > Open Workspace > Browse to `vscode-codeql-starter/vscode-codeql-starter.code-workspace`.
-1. Download the [Exiv2 database](http://downloads.lgtm.com/snapshots/cpp/exiv2/Exiv2_exiv2_b090f4d.zip).
-1. Unzip the database.
-1. Import the unzipped database into Visual Studio Code:
+1. Visual Studio Code IDEのインストール
+2. [CodeQL extension for Visual Studio Code](https://codeql.github.com/docs/codeql-for-visual-studio-code/)のダウンロード＆インストール。 完全なセットアップ手順は、[here](https://codeql.github.com/docs/codeql-for-visual-studio-code/setting-up-codeql-in-visual-studio-code/)を参照下さい。
+3. [Set up the starter workspace](https://codeql.github.com/docs/codeql-for-visual-studio-code/setting-up-codeql-in-visual-studio-code/#starter-workspace)をセットアップします。
+    - **Important**: 標準のクエリライブラリもクローンするために、ローカルにクローンする際は、`git clone --recursive` もしくは `git submodule update --init --remote`を指定することを忘れないように。 
+4. VSCodeを実行して、次のようにワークスペースをオープンします。: File > Open Workspace > `vscode-codeql-starter/vscode-codeql-starter.code-workspace`をブラウズします。
+5. [Exiv2 database](http://downloads.lgtm.com/snapshots/cpp/exiv2/Exiv2_exiv2_b090f4d.zip)をダウンロードします。
+6. Import the unzipped database into Visual Studio Code:
     - Click the **CodeQL** icon in the left sidebar.
     - Place your mouse over **Databases**, and click the + sign that appears on the right.
     - Choose the unzipped database directory on your filesystem.
-1. Create a new file, name it `EmptyIf.ql`, save it under `codeql-custom-queries-cpp`.
+7. Create a new file, name it `EmptyIf.ql`, save it under `codeql-custom-queries-cpp`.
 
 ## Documentation links
 If you get stuck, try searching our documentation and blog posts for help and ideas. Below are a few links to help you get started:
@@ -92,13 +91,13 @@ What we can see is that there is a _block_ (i.e. an area of code enclosed by `{`
     <details>
     <summary>Hint</summary>
 
-    A block statement is represented by the standard library type `Block`.
+    A block statement is represented by the standard library type `BlockStmt`.
     </details>
     <details>
     <summary>Solution</summary>
 
     ```ql
-    from Block block
+    from BlockStmt block
     select block
     ```
     </details>
@@ -114,13 +113,13 @@ This reports the "then" part of each if statement (i.e. the part that is execute
     <details>
     <summary>Hint</summary>
 
-    `Block` has an operation called `getNumStmt()`.
+    `BlockStmt` has an operation called `getNumStmt()`.
     </details>
     <details>
     <summary>Solution</summary>
 
     ```ql
-    from Block block
+    from BlockStmt block
     select block, block.getNumStmt()
     ```
     </details>
@@ -129,7 +128,7 @@ We can apply further constraints to the variables by adding a `where` clause, an
 For example:
 
 ```ql
-from IfStmt ifStmt, Block block
+from IfStmt ifStmt, BlockStmt block
 where ifStmt.getThen() = block
 select ifStmt, block
 ```
@@ -140,7 +139,7 @@ When we run this query, we again get two columns, with if statements and then pa
 if (x)
   return 0;
 ```
-This reveals a feature of QL - proscriptive typing. By specifying that the variable `block` has type "Block", we are actually asserting some logical conditions on that variable i.e. that it represents a block. In doing so, we have also limited the set of if statements to only those where the then part is associated with a block.
+This reveals a feature of QL - proscriptive typing. By specifying that the variable `block` has type "BlockStmt", we are actually asserting some logical conditions on that variable i.e. that it represents a block. In doing so, we have also limited the set of if statements to only those where the then part is associated with a block.
 
 3. Update your query to report only blocks with `0` stmts.
     <details>
@@ -152,7 +151,7 @@ This reveals a feature of QL - proscriptive typing. By specifying that the varia
     <summary>Solution</summary>
 
     ```ql
-    from Block block
+    from BlockStmt block
     where block.getNumStmt() = 0
     select block
     ```
@@ -168,7 +167,7 @@ This reveals a feature of QL - proscriptive typing. By specifying that the varia
     <summary>Solution</summary>
 
     ```ql
-    from IfStmt ifStmt, Block block
+    from IfStmt ifStmt, BlockStmt block
     where
       ifStmt.getThen() = block and
       block.getNumStmt() = 0
@@ -191,7 +190,7 @@ In order to use this with the rest of the CodeQL toolchain, we will need to make
  */
 import cpp
 
-from IfStmt ifStmt, Block block
+from IfStmt ifStmt, BlockStmt block
 where
   ifStmt.getThen() = block and
   block.getNumStmt() = 0

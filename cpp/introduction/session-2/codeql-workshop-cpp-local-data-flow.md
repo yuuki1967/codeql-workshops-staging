@@ -1,17 +1,17 @@
-# CodeQL workshop for C/C++: Introduction to local data flow
+# CodeQL workshop for C/C++:  ローカルデータフローの紹介   
 
-- Analyzed language: C/C++
-- Difficulty level: 2/3
+- 分析対象言語 : C/C++
+- 難しさレベル : 2/3
 
-## Problem statement
+## セキュリティ脆弱性問題の解説 
 
-In this workshop, we will use CodeQL to analyze the source code of [dotnet/coreclr](https://github.com/dotnet/coreclr), the runtime for .NET Core.
+このワークショップでは、.NET Coreのランタイムである[dotnet/coreclr](https://github.com/dotnet/coreclr)のソースコードを分析します。
 
-Formatting functions allow the programmer to construct a string output using a format string and an optional set of arguments. The format string is specified using a simple template language. The output string is constructed by processing the format string to find format specifiers, and inserting the values provided as arguments. For example, this `printf` statement:
+関数の形式化は、stringを使うアウトプット、オプショナルの引数のセットを構成を定型化します。stringのフォーマットはテンプレート言語を使って指定します。フォーマット指定を見つけるために、フォーマットstringを処理することで、アウトプットのstringが構築されます。そして、引数に渡される値を挿入します。例えば、`printf`の宣言:
 ```c
 printf("Name: %s, Age: %d", "Freddie", 2);
 ```
-would produce the output `"Name: Freddie, Age: 2"`. So far, so good. However, problems arise if there is a mismatch between the number of formatting specifiers, and the number of arguments. For example:
+これは、アウトプット`"Name: Freddie, Age: 2"を生成します。これに関しては問題ありませんが、フォーマット指定の数と引数のとの間で不一致があった場合に、問題が起きます。
 ```c
 printf("Name: %s, Age: %d", "Freddie");
 ```
