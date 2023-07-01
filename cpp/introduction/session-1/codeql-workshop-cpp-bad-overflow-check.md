@@ -77,35 +77,35 @@ if ((int)v + (int)b < (int)v) {
 端的に言うと、32bitよりも小さい型同士の足し算結果のオーバーフロー検証は無意味となります。
 </details>
 
-We will begin by using CodeQL to identify relational comparison operations (`<`, `>`, `<=`, `>=`) that look like overflow checks. We will then refine this to identify only those checks which are likely wrong due to integer promotion.
+オーバーフローなどのチェックを行うために、比較演算子(`<`, `>`, `<=`, `>=`)をCodeQLは認識します。ただし、整数への格上げにより、間違った認識を改善する。
 
-If you follow the workshop all the way to the end, then you will find a real security in an old version of ChakraCore.
+最後までこのワークショップを進めれば、CharkCoreの中の古いバージョンの中に本当のセキュリティを見つけるでしょう。
 
-## Setup instructions
+## セットアップ手順 
 
-### Writing queries on your local machine
+### ローカルPC上でクエリを作成する場合  
 
-To run CodeQL queries on ChakraCore offline, follow these steps:
+CharkCore上でCodeQLのクエリを実行するために、次の手順で行う。
 
-1. Download the [ChakraCore database](https://drive.google.com/file/d/1Jhxylk0b6My3P61-nt3_DkHreAXQltWz/view?usp=sharing).
-1. Import the database into Visual Studio Code:
-    - Click the **CodeQL** icon in the left sidebar.
-    - Place your mouse over **Databases**, and click the archive sign that appears on the right.
-    - Choose the database directory on your filesystem.
-1. Create a new directory `bad-overflow-queries` in the Visual Studio Code Explorer view.
-1. Add the file `qlpack.yml` with the following content to the directory `bad-overflow-queries`.or execute `codeql pack init cpp/bad-overflow-queries -d` under the directory `cpp` .
+1. [ChakraCore database](https://drive.google.com/file/d/1Jhxylk0b6My3P61-nt3_DkHreAXQltWz/view?usp=sharing)をダウンロード。
+1. Visual Studio Codeにデータベースをインポート:
+    - Visual Studio Codeの左のサイドバーにある**CodeQL** アイコンをクリック
+    - **Databases**のarchive signにマウスを重ねてクリック
+    - ファイルシステムから、該当するデータベースを選択
+1. 新しいディレクトリ`bad-overflow-queries`をVisual Studio Codeのエクスプローラのビューから作成 
+1. ディレクトリ`bad-overflow-queries`の下に、`qlpack.yml`ファイルを以下のコンテンツを入れるか、`cpp`ディレクトリの下で、`codeql pack init bad-overflow-queries -d`を実行。（qlpack.ymlが自動生成されます）
 
    ```yaml
    name: bad-overflow-queries
    version: 0.0.1
    dependencies:
-    "codeql/cpp-all" : "0.5.2"
+    "codeql/cpp-all" : "*"
    ```
 
 1. Run the command `CodeQL: Install Pack Dependencies` using the command pallette (View -> Command Pallette...), select the `bad-overflow-queries` pack and click ok.
 1. Create a new file, name it `BadOverflowCheck.ql`, save it under `bad-overflow-queries`.
 
-## Documentation links
+## 参照資料 
 
 If you get stuck, try searching our documentation and blog posts for help and ideas. Below are a few links to help you get started:
 
@@ -113,7 +113,7 @@ If you get stuck, try searching our documentation and blog posts for help and id
 - [Learning CodeQL for C/C++](https://codeql.github.com/docs/codeql-language-guides/codeql-for-cpp/)
 - [Using the CodeQL extension for VS Code](https://codeql.github.com/docs/codeql-for-visual-studio-code/)
 
-## Workshop
+## ワークショップ
 
 The workshop is split into several steps. You can write one query per step, or work with a single query that you refine at each step. Each step has a **hint** that describe useful classes and predicates in the CodeQL standard libraries for C/C++. You can explore these in your IDE using the autocomplete suggestions and jump-to-definition command.
 

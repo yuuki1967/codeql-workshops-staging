@@ -1,4 +1,4 @@
-# CodeQL workshop for C/C++: snprintf overflow
+# CodeQL workshop for C/C++: snprintf オーバーフロー:
 
 - Analyzed language: C/C++
 - Difficulty level: 2/3

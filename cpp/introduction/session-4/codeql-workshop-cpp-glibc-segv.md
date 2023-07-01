@@ -1,9 +1,9 @@
 # CodeQL workshop for C/C++: glibc SEGV hunt
 
-- Analyzed language: C/C++
-- Difficulty level: 3/3
+- 分析対象言語 : C/C++
+- 難しさレベル : 3/3
 
-## Problem statement
+## セキュリティ脆弱性問題解説 
 
 In this workshop, we will use CodeQL to analyze the source code of the [GNU C Library](https://www.gnu.org/software/libc/) (glibc).
 
@@ -21,7 +21,7 @@ The GNU C Library contains hundreds of calls to `alloca`. In this challenge, you
 
 If you follow the challenge all the way to the end then you will find a bug in glibc that is reproducible from a standard command-line application.
 
-## Setup instructions
+## セットアップ手順 
 
 ### Writing queries on your local machine
 
