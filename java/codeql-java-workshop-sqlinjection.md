@@ -1,8 +1,8 @@
 # CodeQL workshop for Java: SQL Injection
 
-- Analyzed language: Java 
+- 分析対象言語 : Java 
 
-## Overview
+## 概要
 
  - [Problem statement](#problemstatement)
  - [Setup instructions](#setupinstructions)
@@ -16,8 +16,8 @@
    - [Section 6 - Extending default queries](#section6)
  - [What's next](#whatsnext)
 
-## Problem statement <a id="problemstatement"></a>
-In this workshop, we will be using CodeQL to find SQL injection vulnerabilities (CWE-089) in a database built from the Security Shephard solution maintained by OWASP. This repository is generally used for training and education purposes. This repository consists of many small applications. We will be analysiing client side injection in an Android application. The vulnerability arises from an Android Activity that takes in user input values via multiple fields. It reads these fields via the activity and passes them into the `login` method. This method opens a SQLite database on the users device and it constructs a query using string concatenation which it then passes to the `rawQuery` method that eventually gets executed on the databate. There is no sanitization so there exists a potential SQL injection vulnerability inside this applicatiion. 
+## セキュリティ脆弱性問題解説  <a id="problemstatement"></a>
+このワークショップでは、OWASPで管理しているSecurity Shephardソリューションからビルドしたデータベースに存在するSQLインジェクション(CWE-089)をCodeQLを使って、検出します。このリポジトリは、一般によくトレーニングで使われているものです。このリポジトリは多くの小さいアプリケーションが入っています。その中から、Androidアプリのクライアントサイドのインジェクションを分析します。脆弱性は、複数のフィールドを経由したユーザ入力値をとるAndroid activityから起きます。activity経由で複数のフィールドを読み込み、`login`メソッドに、それら値を渡します。このメソッドは、ユーザ端末上でデータベースをオープンし、文字列のの連結を使って、クエリを生成します。その後、データベース上で実行する`rawQuery`メソッドに、連結データを渡します。このアプリの中で、SQLインジェクション脆弱性をサニタイズ（無害化)していないため、SQLインジェクション問題が潜在的にあると考えます。
 
 **Source**
 
@@ -27,7 +27,7 @@ In this workshop, we will be using CodeQL to find SQL injection vulnerabilities 
 
 `db.rawQuery(query, null);`
 
-## Setup instructions for Visual Studio Code <a id="setupinstructions"></a>
+## Visual Studio Code上でのセットアップ手順 <a id="setupinstructions"></a>
 
 To take part in the workshop you will need to follow these steps to get the CodeQL development environment setup:
 
@@ -40,7 +40,7 @@ To take part in the workshop you will need to follow these steps to get the Code
 6. Choose this database in CodeQL (using `Ctrl + Shift + P` to open the command palette, then selecting "CodeQL: Choose Database").
 7. Create a new file in the `codeql-custom-queries-java` directory called `sqlinjection-workshop.ql`.
 
-## Documentation links <a id="documentationlinks"></a>
+## 参照資料 <a id="documentationlinks"></a>
 If you get stuck, try searching our documentation and blog posts for help and ideas. Below are a few links to help you get started:
 - [Learning CodeQL](https://help.semmle.com/QL/learn-ql)
 - [Learning CodeQL for Java](https://help.semmle.com/QL/learn-ql/cpp/ql-for-java.html)
@@ -49,11 +49,11 @@ If you get stuck, try searching our documentation and blog posts for help and id
 
 
 
-## Workshop <a id="workshop"></a>
+## ワークショップ <a id="workshop"></a>
 
 The workshop is split into several steps. You can write one query per step, or work with a single query that you refine at each step. Each step has a **hint** that describes useful classes and predicates in the CodeQL standard libraries for Java. You can explore these in your IDE using the autocomplete suggestions (`Ctrl + Space`) and the jump-to-definition command (`F12`).
 
-### Section 1: Finding Sources - Method Calls to getText()  <a id="section1"></a>
+### セクション 1: Finding Sources - Method Calls to getText()  <a id="section1"></a>
 
  1. Find all method calls in the program.
     <details>
@@ -93,7 +93,7 @@ The workshop is split into several steps. You can write one query per step, or w
     ```
     </details>
 
-### Section 2: Finding Sinks - Method Calls to rawQuery  <a id="section2"></a>
+### セクション 2: Finding Sinks - Method Calls to rawQuery  <a id="section2"></a>
  1. Find all the calls in the program to methods called `rawQuery`
 
     ```ql
@@ -126,7 +126,7 @@ The workshop is split into several steps. You can write one query per step, or w
     ```
     </details>
 
-### Section 3: Data Flow  <a id="section3"></a>
+### セクション 3: Data Flow  <a id="section3"></a>
 
 We have now identified (a) places in the program which receive untrusted data and (b) places in the program which potentially trigger malicious SQL queries.. We now want to tie these two together to ask: does the untrusted data ever _flow_ to the potentially unsafe SQL query call?
 
@@ -218,7 +218,7 @@ select sink, source
 
 You can now run the completed query. What results did you get? Was it what you were expecting? 
 
-### Section 4: Adding Additional Taint Steps <a id="section4"></a>
+### セクション 4: Adding Additional Taint Steps <a id="section4"></a>
 Sometimes the data flow or taint tracking analysis will not be aware that data may flow through a particular code pattern or function call. It is conservative by default, to keep results precise.
 
 We can add additional problem-specific steps if necessary, by implementing the `isAdditionalTaintStep` predicate on our `TaintTracking::Configuration` subclass.
@@ -283,7 +283,7 @@ and try again.
   ```
   </details>
 
-### Section 5: Final Query <a id="section5"></a>
+### セクション 5: Final Query <a id="section5"></a>
 
 We can update the query so that it not only reports the sink, but it also reports the source and the path to that source. We can do this by making these changes:
 The answer to this is to convert the query to a _path problem_ query. There are five parts we will need to change:
@@ -342,7 +342,7 @@ The answer to this is to convert the query to a _path problem_ query. There are 
 	```
     </details>
 
-### Section 6 - Extending default queries <a id="section6"></a>
+### セクション 6 - Extending default queries <a id="section6"></a>
 
 Although we have created a query from scratch to find this problem, we can also extend our default SQL Injection queries, [SqlTaintedLocal.ql](https://github.com/github/codeql/blob/main/java/ql/src/Security/CWE/CWE-089/SqlTaintedLocal.ql) and [SqlTainted.ql](https://github.com/github/codeql/blob/main/java/ql/src/Security/CWE/CWE-089/SqlTainted.ql) to capture these sources and sinks. This is done by implementing the file [Customizations.qll](https://github.com/github/codeql/blob/main/java/ql/src/Customizations.qll) located at the root of the CodeQL repository.  
 
