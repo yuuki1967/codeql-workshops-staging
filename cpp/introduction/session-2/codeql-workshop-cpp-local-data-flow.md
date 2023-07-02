@@ -15,6 +15,7 @@ printf("Name: %s, Age: %d", "Freddie", 2);
 ```c
 printf("Name: %s, Age: %d", "Freddie");
 ```
+
 In this case, we have one more format specifier than we have arguments. In a managed language such as Java or C#, this simply leads to a runtime exception. However, in C/C++, the formatting functions are typically implemented by reading values from the stack without any validation of the number of arguments. This means a mismatch in the number of format specifiers and the number of format arguments can lead to information disclosure (i.e. accessing unintended values from the top of the stack).
 
 Of course, in practice this happens rarely with constant formatting strings. Instead, it’s most problematic when the formatting string can be specified by the _user_, allowing an attacker to provide a formatting string with the wrong number of format specifiers. Furthermore, if an attacker can control the format string, they may be able to provide the `%n` format specifier, which causes `printf` to write the number characters in the generated output string to a specified memory location.
@@ -26,7 +27,7 @@ This workshops will provide:
  - Exploration of local data flow
  - Exploration of local taint tracking
 
-## Setup instructions
+## セットアップ手順
 
 ### Writing queries on your local machine
 

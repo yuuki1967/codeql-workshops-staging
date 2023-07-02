@@ -1,9 +1,9 @@
-# CodeQL workshop for C/C++: Introduction to global data flow
+# CodeQL workshop for C/C++: グローバルデータフローの紹介
 
-- Analyzed language: C/C++
-- Difficulty level: 2/3
+- 分析対象言語 : C/C++
+- 難しさレベル : 2/3
 
-## Problem statement
+## セキュリティ脆弱性問題解説 
 
 In this workshop, we will use CodeQL to analyze the source code of
 [dotnet/coreclr](https://github.com/dotnet/coreclr), the runtime for .NET
@@ -38,7 +38,7 @@ This workshops will provide:
  - Data flow extra taint steps
  - Data flow models
 
-## Setup instructions
+## セットアップ手順 
 
 ### Writing queries on your local machine
 
@@ -55,16 +55,17 @@ To run CodeQL queries on dotnet/coreclr, follow these steps:
 1. Create a new CodeQL pack using the command `codeql pack init workshop-queries` using the terminal in the created folder.
 1. Create a new file, name it `FormatStringInjection.ql`, save it under `workshop-queries`.
 
-## Documentation links
+## 参考資料 
 If you get stuck, try searching our documentation and blog posts for help and ideas. Below are a few links to help you get started:
 - [Learning CodeQL](https://codeql.github.com/docs/writing-codeql-queries/)
 - [Learning CodeQL for C/C++](https://codeql.github.com/docs/codeql-language-guides/codeql-for-cpp/)
 - [Using the CodeQL extension for VS Code](https://codeql.github.com/docs/codeql-for-visual-studio-code/)
 
-## Workshop
+## ワークショップ
 The workshop is split into several steps. You can write one query per step, or work with a single query that you refine at each step. Each step has a **hint** that describes useful classes and predicates in the CodeQL standard libraries for C/C++. You can explore these in your IDE using the autocomplete suggestions (Ctrl + Space) and the jump-to-definition command (F12).
 
 ### Non-constant format strings
+
 
 In the previous workshop we wrote a query to find non-constant format strings using local data flow:
 ```ql
