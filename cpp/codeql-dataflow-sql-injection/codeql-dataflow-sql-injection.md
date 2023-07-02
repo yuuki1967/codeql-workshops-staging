@@ -1,7 +1,7 @@
 <!-- -*- coding: utf-8 -*- -->
 <!-- https://gist.github.com/hohn/
  -->
-# CodeQL Tutorial for C/C++: Data Flow and SQL Injection
+# CodeQL チュートリアル for C/C++: データフローとSQLインジェクション
 
 <!--
  !-- xx:
@@ -35,26 +35,33 @@
     - [The complete Query: SqlInjection.ql](#the-complete-query-sqlinjectionql)
     - [The Database Writer: add-user.c](#the-database-writer-add-userc)
 
-## Setup Instructions
+## セットアップ手順
 
-To run CodeQL queries on dotnet/coreclr, follow these steps:
+dotnet/coreclrに対してCodeQLのクエリを実行するためのステップです。
 
-1. Install the Visual Studio Code IDE.
-2. Download and install the [CodeQL extension for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-codeql). Full setup instructions are [here](https://codeql.github.com/docs/codeql-for-visual-studio-code/setting-up-codeql-in-visual-studio-code/).
-3. Download the sample database [`codeql-dataflow-sql-injection-d5b28fb.zip`](https://drive.google.com/file/d/1eBZ69ZQx6YnnZu41iUL0m8_e9qyMCZ9B/view?usp=sharing)
+1. Visual Studio Code IDEをインストールします
+2. [CodeQL extension for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-codeql)をダウンロード＆インストールします。完全な手順は[here](https://codeql.github.com/docs/codeql-for-visual-studio-code/setting-up-codeql-in-visual-studio-code/)になります。
+3. ここで使用するCodeQL データベースは[`codeql-dataflow-sql-injection-d5b28fb.zip`](https://drive.google.com/file/d/1eBZ69ZQx6YnnZu41iUL0m8_e9qyMCZ9B/view?usp=sharing)からダウンロードできます。
 
-4. Unzip the database.
+4. Visual Studio Codeに先ほどダウンロードしたデータベースをインポートします:
+    - Visual Studio Codeの左側のサイドバーにある **CodeQL** アイコンをクリックします
+    - マウスを **Databases**のarchiveアイコンをクリックすると、File ExploreのWindowが開く
+    - 当該データベースを選択します
 
-5. Import the unzipped database into Visual Studio Code:
-    - Click the **CodeQL** icon in the left sidebar.
-    - Place your mouse over **Databases**, and click the + sign that appears on
-      the right. 
-    - Choose the unzipped database directory on your filesystem.
+5. CodeQLのクエリを作成するために、`cpp`ディレクトリの下で、本クエリようの　qlpackを作成します。
+    - `codeql pack init sqlinjection -d .`を実行します
+      (ノート：pack名はすべて小文字)
+    -  `sqlinjection`ディレクトリにqlpack.ymlができるので、最後の行に以下を追加します。
+    ```
+       dependencies:
+         codeql/cpp-all: "*"
+    ```
+6. Visual Studio Codeの`コマンドパレット`から`CodeQL: Install Pack Dependencies`を実行。選択画面から、`sqlinjection`にチェックして`OK`を押下。
 
-8. Create a new file, name it `SqliInjection.ql`, save it under `codeql-custom-queries-cpp`.
+7. `sqlinjection`ディレクトリの下に、`SqliInjection.ql`ファイルを作成。
 
 
-## Documentation Links
+## 参考資料 
 If you get stuck, try searching our documentation and blog posts for help and ideas. Below are a few links to help you get started:
 - [Learning CodeQL](https://help.semmle.com/QL/learn-ql)
 - [Learning CodeQL for C/C++](https://help.semmle.com/QL/learn-ql/cpp/ql-for-cpp.html)
@@ -65,10 +72,9 @@ This is a brief review of CodeQL taken from the [full
 introduction](https://git.io/JJqdS).  For more details, see the [documentation
 links](#documentation-links).  We will revisit all of this during the tutorial.
 
-### from, where, select
-Recall that codeql is a declarative language and a basic query is defined by a
-_select_ clause, which specifies what the result of the query should be. For
-example:
+### from, where, select(クエリの基本の３句)
+CodeQLは叙述型言語です。クエリの結果を表示するために`select`を使って記述します。
+一番単純な例:
 
 ```ql
 import cpp
@@ -76,35 +82,28 @@ import cpp
 select "hello world"
 ```
 
-More complicated queries look like this:
+もうちょっと複雑な例:
 ```ql
 from /* ... variable declarations ... */
 where /* ... logical formulas ... */
 select /* ... expressions ... */
 ```
 
-The `from` clause specifies some variables that will be used in the query. The
-`where` clause specifies some conditions on those variables in the form of logical
-formulas. The `select` clauses specifies what the results should be, and can refer
-to variables defined in the `from` clause.
+クエリの中で使用する変数は、`from`句で指定します。それら変数に対して制約をかけるときに`where`句で指定します。制約は複数指定が可能です。そして、その結果を`select`句を使って表示します。
 
-The `from` clause is defined as a series of variable declarations, where each
-declaration has a _type_ and a _name_. For example:
+`from`句の中に指定する変数は、複数指定できます。指定の方法は、type(型),variable(変数名)で指定します。
+例：
 
 ```ql
 from IfStmt ifStmt
 select ifStmt
 ```
 
-We are declaring a variable with the name `ifStmt` and the type `IfStmt` (from the
-CodeQL standard library for analyzing C/C++).  Variables represent a **set of
-values**, initially constrained by the type of the variable.  Here, the variable
-`ifStmt` represents the set of all `if` statements in the C/C++ program, as we can
-see if we run the query.
+こちらの例では、typeとして、`IfStmt`、variableとして、`ifStmt`として`from`句で宣言しています。型の制約にマッチした値が変数に設定されます。ここでは、すべての`if`文を変数`ifStmt`に入っています。実行してみると、`if`文を抽出できることが確認できます。
 
-A query using all three clauses to find empty blocks:
+次の例は、`if`ブロックの中から、空のブロックを抽出するクエリです：
 ```ql
-from IfStmt ifStmt, Block block
+from IfStmt ifStmt, BlockStmt block
 where
   ifStmt.getThen() = block and
   block.getNumStmt() = 0
@@ -112,14 +111,10 @@ select ifStmt, "Empty if statement"
 ```
 
 
-### Predicates
-The other feature we will use are _predicates_. These provide a way to encapsulate
-portions of logic in the program so that they can be reused.  You can think of
-them as a mini `from`-`where`-`select` query clause. Like a select clause they
-also produce a set of "tuples" or rows in a result table.
+### Predicate
+その他の特徴は、_predicate_です。ロジックの一部をカプセル化するために指定します。シンプルなクエリ`from`-`where`-`select`を考えます。このクエリは、タプル、もしくは、テーブルの行をアウトプットします。
 
-We can introduce a new predicate in our query that identifies the set of empty
-blocks in the program (for example, to reuse this feature in another query):
+空のブロックを検出する部分を新たにpredicateにする例を紹介します。predicateにすることで、別のクエリの中で再利用することができます。
 
 ```ql
 predicate isEmptyBlock(Block block) {
@@ -131,20 +126,16 @@ where isEmptyBlock(ifStmt.getThen())
 select ifStmt, "Empty if statement"
 ```
 
-### Existential quantifiers (local variables in queries)
-Although the terminology may sound scary if you are not familiar with logic and
-logic programming, *existential quantifiers* are simply ways to introduce
-temporary variables with some associated conditions.  The syntax for them is:
+### Existential quantifiers (クエリ内のローカル変数)
+*existential qualifiers*は関連のある状態を一時的変数に入れる簡単な方法です。文法例：
 
 ```ql
 exists(<variable declarations> | <formula>)
 ```
 
-They have a similar structure to the `from` and `where` clauses, where the first
-part allows you to declare one or more variables, and the second formula
-("conditions") that can be applied to those variables.
+existsの中の文法は、`from`と`where`句の構造に似ています。最初の部分は、変数を宣言して、二番目に変数を適用する式("conditions")を指定します。
 
-For example, we can use this to refactor the query 
+例えば、クエリをリファクタリングするために活用します。
 ```ql
 from IfStmt ifStmt, Block block
 where
@@ -153,7 +144,7 @@ where
 select ifStmt, "Empty if statement"
 ```
 
-to use a temporary variable for the empty block:
+空のブロックのために、一時的変数を使います。:
 ```ql
 from IfStmt ifStmt
 where
