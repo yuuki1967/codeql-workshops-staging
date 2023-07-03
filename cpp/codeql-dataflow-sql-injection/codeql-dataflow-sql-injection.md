@@ -9,8 +9,8 @@
   -->
 
 - [CodeQL Tutorial for C/C++: Data Flow and SQL Injection](#codeql-tutorial-for-cc-data-flow-and-sql-injection)
-  - [Setup Instructions](#setup-instructions)
-  - [Documentation Links](#documentation-links)
+  - [セットアップ手順](#%E3%82%BB%E3%83%83%E3%83%88%E3%82%A2%E3%83%83%E3%83%97%E6%89%8B%E9%A0%86)
+  - [参考資料](#%E5%8F%82%E8%80%83%E8%B3%87%E6%96%99)
   - [Codeql Recap](#codeql-recap)
     - [from, where, select](#from-where-select)
     - [Predicates](#predicates)
@@ -69,7 +69,7 @@ If you get stuck, try searching our documentation and blog posts for help and id
 
 ## Codeql Recap
 This is a brief review of CodeQL taken from the [full
-introduction](https://git.io/JJqdS).  For more details, see the [documentation
+introduction](https://git.io/JJqdS).  For more details, see the [documentation%E5%8F%82%E8%80%83%E8%B3%87%E6%96%99
 links](#documentation-links).  We will revisit all of this during the tutorial.
 
 ### from, where, select(クエリの基本の３句)
@@ -137,7 +137,7 @@ existsの中の文法は、`from`と`where`句の構造に似ています。最�
 
 例えば、クエリをリファクタリングするために活用します。
 ```ql
-from IfStmt ifStmt, Block block
+from IfStmt ifStmt, BlockStmt block
 where
   ifStmt.getThen() = block and
   block.getNumStmt() = 0
@@ -155,18 +155,14 @@ where
 select ifStmt, "Empty if statement"
 ```
 
-This is frequently used to convert a query into a predicate.
+1つのクエリからpredicateへはよく利用されます。
 
-### Classes
-Classes are a way in which you can define new types within CodeQL, as well as
-providing an easy way to reuse and structure code.
+### Class
+classはCodeQLの中で、新しい型を定義するときに利用します。再利用や、構造化コードでの利用が代表的です。
 
-Like all types in CodeQL, classes represent a set of values. For example, the
-`Block` type is, in fact, a class, and it represents the set of all blocks in the
-program. You can also think of a class as defining a set of logical conditions
-that specifies the set of values for that class.
+CodeQLでデフォルトで持っているあらゆる型のように、色々な値のひとつのまとまりを表現しています。実際、`BlockStmt`はclassであらゆるブロックを表現しています。それから、すべてのロジカルコンディションの定義を１つのclassとしてまとめることができます。
 
-For example, we can define a new CodeQL class to represent empty blocks:
+例として、空のブロックを表現する新たなclassを作成します。
 ```ql
 class EmptyBlock extends Block {
   EmptyBlock() {
@@ -175,19 +171,19 @@ class EmptyBlock extends Block {
 }
 ```
 
-and use it in a query:
+そして、新しいclassの使用例を以下に示します。:
 ```ql
 from IfStmt ifStmt, EmptyBlock block
 where ifStmt.getThen() = block
 select ifStmt, "Empty if statement"
 ```
 
-## The Problem in Action
-Running the code is a great way to see the problem and check whether the code is
-vulnerable.
+## 問題の再現  
+SQLインジェクションを実際のコードを実行することで体験します。
 
-This program can be compiled and linked, and a simple sqlite db created via 
 
+これを再現するためには、プログラムのビルドと、DBを作成するためにsqliteが必要になります。
+以下の操作で、プログラムのビルド、DB構築します。
 ```sh
 # Build
 ./build.sh
@@ -198,8 +194,7 @@ This program can be compiled and linked, and a simple sqlite db created via
 ./admin -s
 ```
 
-Users can be added via `stdin` in several ways; the second is a pretend "server"
-using the `echo` command.
+2つの方法で標準入出力からユーザをDBに登録します。2番目は、`echo`コマンドを使って、マニュアルの操作を代替します。
 
 ```sh
 # Add regular user interactively
@@ -210,7 +205,7 @@ First User
 echo "User Outside" | ./add-user 2>> users.log
 ```
 
-Check the db and log:
+DBとlogを確認します:
 ```
 # Check
 ./admin -s
@@ -218,7 +213,7 @@ Check the db and log:
 tail -4 users.log 
 ```
 
-Looks ok:
+結果は期待した通りになったと思います。:
 ```
 0:$ ./admin -s
 87797|First User
@@ -229,14 +224,14 @@ Looks ok:
 [Tue Jul 21 14:17:07 2020] query: INSERT INTO users VALUES (87808, 'User Outside')
 ```
 
-But there may be bad input; this one guesses the table name and drops it:
+入力として、１つのテーブルそ想定して、削除するといった悪意ある入力がある可能性があります:
 ```sh
 # Add Johnny Droptable 
 ./add-user 2>> users.log
 Johnny'); DROP TABLE users; --
 ```
 
-And then we have this:
+テーブルのコンテンツを確認してみます:
 ```sh
 # And the problem:
 ./admin -s
@@ -244,7 +239,7 @@ And then we have this:
 Error: near line 2: no such table: users
 ```
 
-What happened?  The log shows that data was treated as command:
+ログから、起こったことを考えてみます。:
 ```
 1:$ tail -4 users.log 
 [Tue Jul 21 14:15:46 2020] query: INSERT INTO users VALUES (87797, 'First User')
@@ -252,33 +247,20 @@ What happened?  The log shows that data was treated as command:
 [Tue Jul 21 14:18:25 2020] query: INSERT INTO users VALUES (87817, 'Johnny'); DROP TABLE users; --')
 ```
 
-Looking ahead, we now *know* that there is unsafe external data (source)
-which reaches (flow path) a database-writing command (sink).  Thus, a query
-written against this code should find at least one taint flow path.
+危険な入力データが,DBへ書き込むコマンドを実行できることが理解できたかと思います。つまり、入力データによりデータフローが悪いデータで汚染されたように見えます。クエリは、その汚染されたデータフローを見つけることです。:
 
-## Problem Statement
+## セキュリティ脆弱性問題解説 
 
-Many security problems can be phrased in terms of _information flow_:
+この例は、SQLインジェクションです。ソースであるユーザ入力から、シンクはSQLクエリを処理するコードです。
 
-_Given a (problem-specific) set of sources and sinks, is there a path in the data
-flow graph from some source to some sink?_
+ユーザが指定した文字列の一部が、攻撃者に、SQL分を挿入する隙をつくります。例えば、テーブル削除であったり、内部のデータを公開するなどです。
 
-The example we look at is SQL injection: sources are user-input, sinks are SQL
-queries processing a string formed at runtime.
+文字列連結を使ったSQLクエリを構成するソースコードを分析するためにCodeQLを使います。それからそのクエリを実行します。以下の例では、`sqlite3`ライブラリを使っています
+- `stdin`で入力したデータを受信して、変数`buf`に格納します
+- `snprintf`を使って、テーブルに`id`に対して、`buf`に格納されているデータを挿入
+- `sqlite3_exec`からクエリを実行 
 
-When parts of the string can be specified by the user, they allow an attacker to
-insert arbitrary sql statements; these could erase a table or extract internal
-data etc.
-
-We will use CodeQL to analyze the source code constructing a SQL
-query using string concatenation and then executing that query
-string.  The following example uses the `sqlite3` library; it 
-- receives user-provided data from `stdin` and keeps it in `buf`
-- uses environment data and stores it in `id`,
-- runs a query in `sqlite3_exec`
-
-This is intentionally simple code, but it has all the elements that have to be
-considered in real code and illustrates the QL features. 
+これは意図して簡単なコードにしていますが、実際のコードでも考慮しなければいけないです。
 
 ```c
 #include <stdio.h>
@@ -352,56 +334,34 @@ int main(int argc, char* argv[]) {
 
 ```
 
+source(ソース)とsink(シンク),それからセキュリティ脆弱性の起こるフローに注目して、具体的な問題を解決するためのロジックを示す：
 In terms of sources, sinks, and information flow, the concrete problem for codeql is:
-1. specifying `buf` as **source**,
-2. specifying the `query` argument to `sqlite3_exec()` as **sink**, 
-3. specifying some code-specific data flow steps for the codeql library,
-3. using the codeql taint flow library find taint flow paths (if there are any)
-   between the source and the sink.
-
-In the following, we go into more concrete detail and develop codedql scripts to
-solve this problem.
+1. **source**として`buf`を指定している
+2. **sink**として、`sqlite3_exec()｀へ渡す`cuery(クエリ)`を指定している
+3. codeql ライブラリに関するいくつかの特定コードを指定している
+3. sourceとsinkの間で、危険な、悪意あるフローパスを検出するCodeQLのフローライブラリを使用している
 
 
+## データフローの概要とイラスト
+前のセッションで、問題が起こりうる、関連する文字列である。`buf`をsource、`sqlite3_exec`をsinkと認識しました。
 
-## Data flow overview and illustration
-In the previous sections we identified the sources of problematic strings
-(accesses of `info` etc.), and the sink that their data may flow to (the argument
-to `sqlite3_exec`).
+次に、sourceとsinkの間のデータフローを確認します。
 
-We need to see if there is data flow between the source(s) and this sink.
+そのソリューションは、データフローライブラリを使うことです。データフローは名前の通り、プログラムの中のデータフローを追跡することです。このようなセキュリティ脆弱性を見つける際、通常、その脆弱性のある場所から遡って、どこからそのデータが来たのか、自身で解析する際問うと思います。まさにそれをCodeQLのクエリとして実装しているのです。
 
-The solution here is to use the data flow library.  Data flow is, as the name
-suggests, about tracking the flow of data through the program. It helps answers
-questions like: does this expression ever hold a value that originates from a
-particular other place in the program?
+方向性を持つグラフを使って、問題を探すデータフローを視覚化することができます。プログラムの中から、どこにノードがあるのか、フローのエッジ(境界)はどこにあるのかを視覚化します。そのパスが見つかれば、その２つの間のデータフローが明らかになります。
 
-We can visualize the data flow problem as one of finding paths through a directed
-graph, where the nodes of the graph are elements in program, and the edges
-represent the flow of data between those elements. If a path exists, then the data
-flows between those two nodes.
+このグラフは、悪意あるデータに感染したパラメタからのデータフローを表します。グラフのノードは、関数のパラメタや、式のような値を持つプログラム要素です。このグラフのエッジ(境界)は、これらノードを通したフローを表しています。
 
-This graph represents the flow of data from the tainted parameter. The nodes of
-graph represent program elements that have a value, such as function parameters
-and expressions. The edges of this graph represent flow through these nodes.
+CodeQLにおいて、２種類のデータフローがあります。
+ - ローカル("intra-procedual")データフロー：１つの関数内で、データフローをモデル化。すべての関数に関して処理することができます。 
+ - グローバル("inter-procedual")データフロー：すべての関数呼び出しを通してモデルか。すべての関数を解析できません。
 
-There are two variants of data flow available in CodeQL:
- - Local (“intra-procedural”) data flow models flow within one function; feasible
-   to compute for all functions in a CodeQL database.
- - Global (“inter-procedural”) data flow models flow across function calls; not
-   feasible to compute for all functions in a CodeQL database.
+グローバルデータフローがすべての関数に対して解析できない理由は、データフローパスの数が、指数関数的になるためです。
 
-While local data flow is feasible to compute for all functions in a CodeQL
-database, global data flow is not. This is because the number of paths becomes
-_exponentially_ larger for global data flow.
+グローバルデータフローのこの問題を回避するために、_source_と_sink_が適用できるクエリを絞ることです。制限したパスのみを解析します。
 
-The global data flow (and taint tracking) library avoids this problem by requiring
-that the query author specifies which _sources_ and _sinks_ are applicable. This
-allows the implementation to compute paths only between the restricted set of
-nodes, rather than for the full graph.
-
-To illustrate the dataflow for this problem, we have a [collection of slides](https://drive.google.com/file/d/1eEG0eGVDVEQh0C-0_4UIMcD23AWwnGtV/view?usp=sharing)
-for this workshop.
+このワークショップの説明の補足として[collection of slides](https://drive.google.com/file/d/1eEG0eGVDVEQh0C-0_4UIMcD23AWwnGtV/view?usp=sharing)の中でイラストで説明しています。
 
 ## Tutorial: Sources, Sinks and Flow Steps
 <!--
