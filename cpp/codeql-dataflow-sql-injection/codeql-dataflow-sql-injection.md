@@ -371,15 +371,11 @@ XX:
  !-- link.
   -->
 
-The tutorial is split into several steps and introduces concepts as they are
-needed.  Experimentation with the presented queries is encouraged, and the
-autocomplete suggestions (Ctrl + Space) and the jump-to-definition command (F12 in
-VS Code) are good ways explore the libraries.
+このセッションでは、２つのステップに分けて、知っていただきたいコンセプトを紹介します。今回のクエリは、実際に提供しているクエリをベースにしていますので、体験いただけることで、より一層理解が深まるかと思います。また、Visual Studio Codeの自動補完機能、および　jump-to-definitonコマンドで、実装部を参照できますので、理解を助けるものになります。
 
+### データのシンク(sink)
 
-### The Data Sink
-Now let's find the function `sqlite3_exec`.  In CodeQL, this uses `Function`
-and a `getName()` attribute.
+`Function`の`getName`属性を使って、`sqlite3_exec`をまず検出します。
 
 ```ql
 from Function f
@@ -387,6 +383,7 @@ where f.getName() = "sqlite3_exec"
 select f
 ```
 
+1つ検出されるかと思います。
 This should find one result, 
 ```ql
 SQLITE_API int sqlite3_exec(
@@ -397,20 +394,18 @@ SQLITE_API int sqlite3_exec(
   char **errmsg                              /* Error msg written here */
 );
 ```
-in the header `sqlite3.h`.
-
-Next, let's find the calls to `sqlite3_exec` using the `FunctionCall` type
+`FunctionCall`型を使って`sqlite3_exec`を呼び出している箇所を見つけます。
 ```ql
 from FunctionCall exec
 where exec.getTarget().getName() = "sqlite3_exec" 
 select exec
 ```
 
-This finds our call in `add-user.c`, 
+実行すると、`add-user.c`の中の以下にインストラクションを検出します。
 
     rc = sqlite3_exec(db, query, NULL, 0, &zErrMsg);
 
-We are interested in the `query` argument, which we can get using `.getArgument`:
+その関数に渡される`query`パラメタが問題であるので、`getArgument`を使って取得します。
 ```ql
 from FunctionCall exec, Expr query
 where
@@ -419,13 +414,13 @@ where
 select exec, query
 ```
 
-### The Data Source
+### データソース(source) 
 
-The external data enters through the call
+外部からデータを読み取る場合、次のインストラクションを使います。
 
     count = read(STDIN_FILENO, buf, BUFSIZE);
 
-We thus want the `buf` argument to the call of the `read` function.  Together, this is 
+`read`関数のパラメタ`buf`にデータが格納されるので、クエリでそれを取得するようにします。
 
 ```ql
 from FunctionCall read, Expr buf
@@ -436,20 +431,16 @@ select read, buf
 ```
 
 ### The Extra Flow Step
-The codeql data flow library traverses *visible* source code fairly well, but flow
-through opaque functions requires additional support (more on this later).
-Functions for which only a headers is available are opaque, and we have one of
-these here: the call to `snprintf`.  Once we locate this call, there are *two* nodes
-to identify: the inflow and outflow.
-
-Let's start with `snprintf`.  If we try
+CodeQLデータフローライブラリは、ソースコードを極めて詳細に*可視化*します。しかし、不明瞭な関数を使っている場合においては、追加の実装が必要になります。
+マクロのようにヘッダーだけに定義がある場合、関数として認識できないです。一例として、`snprintf`を呼び出すコードについて考えてみます。`snprintf`を呼び出すコードを実装したい場合、CodeQLは２つの`inflow`と`outflow`のノードを抽出します。
+まずは、`Function`ライブラリを使って、`snprintf`を検出するクエリを作成します。
 ```ql
 from FunctionCall printf
 where printf.getTarget().getName() = "snprintf"
 select printf
 ```
-we get zero results.  This is puzzling; if we visit the `add-user.c` source and
-follow the definition of `snprintf`, it turns out to be a macro on MacOS:
+
+実行するとわかる通り、何も検出されません。一旦、ソースコード`add-user,c`と定義しているヘッダーを見てみます。
 ```c
 #undef snprintf
 #define snprintf(str, len, ...) \
@@ -457,22 +448,21 @@ follow the definition of `snprintf`, it turns out to be a macro on MacOS:
 #endif
 ```
 
-Fortunately, the underlying function `__builtin___snprintf_chk` has `snprintf` in
-the name.  So instead of working with C macros from codeql, we generalize our
-query using a name pattern with `.matches`:
+Cのマクロを使って、`__builtin___snprintf_chk`関数を`snprintf`で置き換えています。
+`Function`では、Cマクロを検出できないため、その代わりに、`.matches`を使って名前のパターンマッチングを行います。:
 ```ql
 from FunctionCall printf
 where printf.getTarget().getName().matches("%snprintf%")
 select printf
 ```
 
-This identifies our call
+上記クエリを実行すると、以下のように期待した`snprintf`関数を検出できます。
 
     snprintf(query, bufsize, "INSERT INTO users VALUES (%d, '%s')", id, info);
-    
-and we need the inflow and outflow nodes next.  `query` is the outflow, `info` is
-the inflow.
 
+次のステップは、`inflow`と`outflow`についてです。`query`は`outflow`、`info`が`inflow`になります。    
+
+`snprintf`マクロコールの中で、０から４までの引数があります。`__builtin__snprintf_chk`の関数の中では、０から６までのパラメタを指定できます。
 In the `snprintf` macro call, those have indices 0 and 4.  In the underlying function
 `__builtin___snprintf_chk`, the indices are 0 and 6.  Using the latter:
 ```ql
@@ -484,14 +474,13 @@ where
 select printf, out, into
 ```
 
-This correctly identifies the call and the extra flow arguments.
+上記が正しい呼び出しを検出し、拡張されたフローの引数になります。
 
 <!-- !-- Practice exercise: !-- Very specific: shifted index for macro.
  Generalize this to consider !-- all trailing arguments as sources.  -->
 
 
-Practice exercise: If you are using linux or windows, generalize this query for
-the `snprintf` arguments found there.  One way to do this is using `or`:
+エクササイズ: これまでみてきた例はmacosのライブラリでした。linuxでも、windowsでも動作するように、このクエリを汎用的に使えるような実装を考えてみましょう。ここ汎用化するために、`or`を使います。:
 
 ```ql
 printf.getTarget().getName().matches("%snprintf%") and
@@ -506,31 +495,22 @@ or
 
 
 
-## The CodeQL Taint Flow Configuration
-The previous queries identify our source, sink and one additional flow step.  To
-use global data flow and taint tracking we need some additional codeql setup:
- - a taint flow configuration 
- - the path problem header and imports
- - a query formatted for path problems.
+##  危険なデータに汚染されたフローの設定
+ここまでのクエリは、ソース、シンク、フローステップを抽出するものでした。グローバルデータフローと危険なデータを追跡するためには追加の処理が必要です。
+ - 汚染データフローのフレームワークを作成
+ - `path-problem`ヘッダと`semmle.code.cpp.dataflow.TaintTracking`のimportの追加
+ - `path-problem`向けのクエリフォーム
 
-These are done next.
+これらの処理は次のセッションで実施します。
 
-### Taint Flow Configuration
-The way we configure global taint flow is by creating a custom extension of the
-`TaintTracking::Configuration` class, and speciyfing `isSource`, `isSink`, and 
-`isAdditionalTaintStep` predicates.
+### 汚染データフローフレームワーク設定 
+グローバル汚染データフローの設定は、`TaintTracking::Configuration`クラスの派生クラスを作成することです。そして、そのクラス内で、`isSource`,`isAdditionalTaintStep`predicateをオーバーライドすることです。
 
-The sources and sinks were explained earlier.  Data flow and taint tracking
-configuration classes support a number of additional features that help configure
-the process of building and exploring the data flow path.
+`source(ソース)`と`sink(シンク)`については、これまでのセッションの中ですでに説明した通りです。データフローと汚染データの追跡設定('TaintTracking::Configuration`)のクラスは、データフローパスを構築し、探す処理を実装する追加の機能です。
 
-One such feature is adding additional taint steps. This is useful if you use
-libraries which are not modelled by the default taint tracking. You can implement
-this by overriding `isAdditionalTaintStep` predicate. This has two parameters, the
-`from` and the `to` node, and it essentially allows you to add extra edges into the
-taint tracking or data flow graph.
+このステップが追加の汚染データフローを検出するステップとして追加しまステップとして追加します。デフォルトでこのような汚染データフローをモデル化していない場合に、追加することで、検出できるようになります。具体的には、`isAdditionalTaintStep`predicateを実装することです。このpredicateは`from`と`to`ノード(node)と２つのパラメタを持ち、汚染データフローもしくは、データフローグラグに拡張した2つの要素間のフローを追加します。
 
-A starting configuration can look like the following, with details to be filled
+`configuration`の開始は、次のようになります。
 in.
 
 ```ql
@@ -554,24 +534,16 @@ class SqliFlowConfig extends TaintTracking::Configuration {
 }
 ```
 
-`TaintTracking::Configuration` is a _configuration_ class. In this case, there will be
-a single instance of the class, identified by a unique string specified in the
-characteristic predicate. We then override the `isSource` predicates to represent
-the set of possible sources in the program, and `isSink` to represent the possible
-set of sinks in the program.
+`TaintTracking::Configuration`は、_configuration_ クラスです。特定のpredicateに識別される１つのクラスインスタンスです。それから。プログラムの中の特定のソースを識別するために`isSource`predicate、特定のシンクを識別するために、`isSink`をオーバライドします。
 
-### Path Problem Setup
-Queries will only list sources and sinks by default.  To inspect these results and
-work with them, we also need the data paths from source to sink.  For this, the
-query needs to have the form of a _path problem_ query.
+### Path-Problem のセットアップ
+デフォルトのクエリは、ソースとシンクのみをリストしただけです。結果を検査して、動作するために、ソースからシンクへのデータパスも必要です。これを解決するために、クエリは、_path problem_クエリのフォームに従って記述する必要があります。
 
-This requires a modifications to the query header and an extra import: 
- - The `@kind` comment has to be `path-problem`. This tells the CodeQL toolchain
-   to interpret the results of this query as path results. 
- - A new import `DataFlow::PathGraph`, which will report the path data
-   alongside the query results. 
+具体的には、作成するクエリのヘッダの修正と、追加importが必要です。
+ - `@kind`へのコメントは、`path-problem`に変更する。これにより、CodeQLのツールチェーンに、このクエリは、パスを結果として処理するよう知らせます。
+ - 新たに`DataFlow::PathGraph`をimportすることで、クエリの結果として、パスデータを出力します。
 
-Together, this looks like
+`path-problem`と`TaintTacking::Configuration`ヘッダ、importを一緒に実装したものを以下に示します。
 ```ql
 /**
  * @name SQLI Vulnerability
@@ -586,12 +558,8 @@ import semmle.code.cpp.dataflow.TaintTracking
 import DataFlow::PathGraph
 ```
 
-### Path Problem Query Format
-To use this new configuration and `PathGraph` support, we call the
-`hasFlowPath(source, sink)` predicate, which will compute a reachability table
-between the defined sources and sinks.  Behind the scenes, you can think of this as
-performing a graph search algorithm from sources to sinks.  The query will look
-like this:
+### Path-Problem クエリ形式 
+新しい`configuration`と`PathGraph`を利用するために、`hasFlowPath(source.sink)`predicateをコールします。これにより、定義したsource(ソース)とsink(シンク)との間で、該当するものを探す。ソースからシンクのグラフ探索アルゴリズムを実行していると考えてください。具体的クエリの実装は次のようになります。:
 
 ```ql
 from SqliFlowConfig conf, DataFlow::PathNode source, DataFlow::PathNode sink
@@ -599,19 +567,15 @@ where conf.hasFlowPath(source, sink)
 select sink, source, sink, "Possible SQL injection"
 ```
 
-## Tutorial: Taint Flow Details
-With the dataflow configuration in place, we just need to provide the details for
-source(s), sink(s), and taint step(s).
+## チュートリアル: 汚染データフローの詳細 
+データフローコンフィグレーションを使って、source(s),sink(s), taint step(s)の具体的な実装について、このセッションで説明します。
 
-Some more steps are required to convert our previous queries for use in data
-flow.  These are covered here.
+ここでのステップは、データフローの中で、前回のクエリを置き換える必要が出てきます。
 
 ### The isSink Predicate
-Note that our previous queries used `Expr` nodes, but the taint query requires
-`DataFlow::Node` nodes.
+これまでのクエリは、`Expr`ノードを使っていましたが、汚染データフローを検出するクエリは、`DataFlow::Node`を使います。
 
-We have identified arguments to the call of the `sqlite3_exec` function via the
-query
+復習になりますが、次のクエリで、`sqlite3_exec`のコールのパラメタを抽出しました。
 
 ```ql
 from FunctionCall exec, Expr query
@@ -621,8 +585,7 @@ where
 select exec, query
 ```
 
-First, we need to incorporate the `DataFlow::Node`.  The key to this is
-`node.asExpr()`, which yields the `node`'s expression.  Adding this we get
+まず最初に、`DataFlow::Node`を組み込みます。`node`式を使うために、`node.asExpr()`を使うことがポイントです。
 
 ```ql
 import cpp
@@ -635,8 +598,7 @@ where
     sink.asExpr() = query
 select exec, query, sink
 ```
-
-Notice that `query` is now redundant, so this simplifies to 
+`query`変数は冗長なので、簡素化します。
 ```ql
 from FunctionCall exec, DataFlow::Node sink
 where
@@ -645,11 +607,7 @@ where
 select exec, sink
 ```
 
-Second, we need this as a predicate of a single argument, `predicate
-isSink(DataFlow::Node sink)`.  For this we introduce the `exists()`
-[quantifier](https://help.semmle.com/QL/ql-handbook/formulas.html?highlight=exists#exists)
-to move the `FunctionCall exec` into the body of the query and remove it from the
-result:
+次に、１つのパラメタを持つpredicate `isSink(DataFloe::Node sink)`を作成します。先ほどのクエリをpredicateにするためには、`exists()`[quantifier](https://help.semmle.com/QL/ql-handbook/formulas.html?highlight=exists#exists)を使って、クエリの中にある`FunctionCall exec`を`exists()`へ移動します。:
 
 ```ql
 from DataFlow::Node sink
@@ -661,8 +619,7 @@ where
 select sink
 ```
 
-To turn this into a predicate, `from` contents become arguments, the `where`
-becomes the body, and the `select` is dropped:
+それから、これをpredicateへ移動するために、`from`に指定している変数は、パラメタとなり、`where`句は、`exists()`のボディとなり、`select`は削除します。
 
 ```ql
 predicate isSink(DataFlow::Node sink) {
@@ -675,11 +632,11 @@ predicate isSink(DataFlow::Node sink) {
 ```
 
 ### The isSource Predicate
-Recall that the external data enters through the `buf` argument to the call
+readコールへのパラメタ`buf`に外部から入力されたデータが格納されます。
 
     count = read(STDIN_FILENO, buf, BUFSIZE);
 
-and we got this via the query
+変数`query`を使って取得していました。
 
 ```ql
 from FunctionCall read, Expr buf
@@ -688,10 +645,7 @@ where
     buf = read.getArgument(1)
 select read, buf
 ```
-
-As for the `isSink` predicate in the previous section, we need to convert this to
-a predicate of a single argument, `predicate isSource(DataFlow::Node source)`.
-Following the same steps, we introduce a `DataFlow::Node` and an `exists()`:
+前回のセクションの中で、`isSource`predicateについては、１つのパラメタを渡す`predicate isSource(DataFlow::Node source)`に変換する必要があります。同じステップに従って、`DataFlow::Node`と`exists()`を使います。:
 
 ```ql
 import cpp
@@ -706,16 +660,9 @@ where
 select source
 ```
 
-There is one more adjustment needed for this to work.  The `buf` argument is both
-read by and written to by the `snprintf` function call.  Because we are specifying
-it as a *source*, the value of interest is the value *after* the call.  We get
-this value by
-[casting](https://help.semmle.com/QL/ql-handbook/expressions.html#casts) to the
-post-update node.  Instead of `source.asExpr()`, we use
-`source.(DataFlow::PostUpdateNode).getPreUpdateNode().asExpr()`
+これに関しては、さらに調整が必要です。パラメタ`buf`は、`snprintf`関数コールにより、読み込まれ、書かれます。なぜなら、それを*source*として指定してますし、コール*後(after)*の値にもなるからです。post-updateノードへ[casting](https://help.semmle.com/QL/ql-handbook/expressions.html#casts)することで、この値を取得します。`source.asExpr()`の代わりに、`source.(DataFlow::PostUpdateNode).getPreUpdateNode().asExpr()`を使います。
 
-
-Last, we incorporate this into a predicate:
+最後に、predicateにこの実装を組み込みます。:
 
 ```ql
 predicate isSource(DataFlow::Node source) {
@@ -727,12 +674,10 @@ predicate isSource(DataFlow::Node source) {
 }
 ```
 
-If you quick-eval this predicate, you will see that `source` is now `ref arg buf`
-instead of `buf`.
-
+quick-eval機能を使えば、`source`が今、`buf`ではなく、`ref arg buf`であることがわかります。
 
 ### The isAdditionalTaintStep Predicate
-Our previous query identifies the call to `snprintf` and the extra flow arguments:
+おさらいで、前回のクエリである、`snprintf`コールと、それに渡される０番目と六番目のパラメタを取得するクエリを再度示します。:
 
 ```ql
 from FunctionCall printf, Expr out, Expr into
@@ -742,13 +687,12 @@ where
     printf.getArgument(6) = into
 select printf, out, into
 ```
+`isSource`,`isSink`predicateについては、次のように変更する。
+- `Expr`から`DataFlow::Node`へ変更
+- outflow (`out`) 型を`PostUpdateNode`へ変更
+- predicateへ変更
 
-As for the `isSource` and `isSink` predicates, we need to
-- change from `Expr` to a `DataFlow::Node`
-- change the outflow (`out`) type to a `PostUpdateNode`
-- convert this to a predicate
-
-Put together:
+上記の変更内容を１つに実装します :
 
 ```ql
 import cpp
@@ -765,11 +709,11 @@ predicate isAdditionalTaintStep(DataFlow::Node into, DataFlow::Node out) {
 }
 ```
 
-## Appendix
-This appendix has the complete C source and codeql query.
+## 補足説明
+これまでの演習に使ったCのコードと、codeqlのクエリの完成形を載せます。
 
 ### The complete Query: SqlInjection.ql
-The full query is
+クエリの完成形は次のようになります。
 
 ```ql
 /**
@@ -828,7 +772,7 @@ select sink, source, sink, "Possible SQL injection"
 ```
 
 ### The Database Writer: add-user.c
-The complete source for the sqlite database writer
+Cのコードになります。sqliteデータベースへの書き込みを行うコードです。
 ```c
 #include <stdio.h>
 #include <stdlib.h>
